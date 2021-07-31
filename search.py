@@ -1,26 +1,30 @@
-# simple keyword based search, naive intersection
 from typing import Set, Dict
 
 
+# simple keyword based search, naive intersection
 def conjunction_search(query: str, index: Dict[str, Set]) -> Set:
-    docsets = docset_extraction(index, query)
+    docsets = __docset_extraction(index, query)
     resultset = docsets[0].intersection(*docsets[1:])
     return resultset
 
 
-def docset_extraction(index, query):
+# simple keyword based search, naive union
+def disjunction_search(query: str, index: Dict[str, Set]) -> Set:
+    docsets = __docset_extraction(index, query)
+    resultset = docsets[0].union(*docsets[1:])
+    return resultset
+
+
+# todo add top k retrieval
+# add wand or something similar
+
+def __docset_extraction(index, query):
     keywords = query.split(" ")
     docsets = []
     for keyword in keywords:
         docset = index.get(keyword, [])
         docsets.append(docset)
     return docsets
-
-
-def disjunction_search(query: str, index: Dict[str, Set]) -> Set:
-    docsets = docset_extraction(index, query)
-    resultset = docsets[0].union(*docsets[1:])
-    return resultset
 
 
 def test_search():
