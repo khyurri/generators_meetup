@@ -17,14 +17,13 @@ def disjunction_search(query: str, index: Dict[str, Set]) -> Set:
 
 # todo add top k retrieval
 # add wand or something similar
+def wand_search(query: str, index: Dict[str, Set], top_k: int = 5) -> Set:
+    pass
+
 
 def __docset_extraction(index, query):
     keywords = query.split(" ")
-    docsets = []
-    for keyword in keywords:
-        docset = index.get(keyword, [])
-        docsets.append(docset)
-    return docsets
+    return [index.get(k, set()) for k in keywords]
 
 
 def test_search():
