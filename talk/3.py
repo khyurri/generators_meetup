@@ -2,11 +2,6 @@
 # SEND, CLOSE (tokenizer)
 
 
-# TODO:
-# 1. tokenization NO GENERATORS (R)
-#    1. stopwords problem - callback
-# 2. indexer (sep, stop words), inverted index (K)
-# 3. search (K)
 import os
 from collections import defaultdict
 from typing import Callable, TextIO, Dict, Set
@@ -44,7 +39,7 @@ def search(query: str, index_: Dict[str, Set]) -> Set:
     for keyword in tokenization(query, {" "}, lambda x: True):
         if keyword == "AND" and prev_keyword == "":
             raise RuntimeError
-        docset.append(index_.get(keyword, []))
+        docset.append(index_.get(keyword, set()))
     resultset = docset[0].intersection(*docset[1:])
     return resultset
 

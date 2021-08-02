@@ -38,7 +38,7 @@ def search(query: str, index_: Dict[str, Set]) -> Set:
     for keyword in tokenization(query, {" "}, lambda x: True):
         if keyword == "AND" and prev_keyword == "":
             raise RuntimeError
-        docset.append(index_.get(keyword, []))
+        docset.append(index_.get(keyword, set()))
     resultset = docset[0].intersection(*docset[1:])
     return resultset
 
