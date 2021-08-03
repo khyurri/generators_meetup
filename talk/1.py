@@ -1,63 +1,63 @@
-# TODO:
-# 1. tokenization NO GENERATORS (R)
-#    1. stopwords problem - callback
-# 2. indexer (sep, stop words), inverted index (K)
-# 3. search (K)
 import os
-from collections import defaultdict, Set
+from collections import defaultdict
 from typing import TextIO, Callable
 
 index = defaultdict(set)
 
 
-def tokenize(text: str, sep: set, predicate: Callable[[str], bool]) -> list:
+def tokenization(text: str, sep: set, predicate: Callable[[str], bool]) -> list:
     acc = []
     result = []
     for char in text:
         if char not in sep:
             acc.append(char)
         else:
-            token = "".join(acc)
+            token = "".join(acc).lower()
             if predicate(token):
                 result.append(token)
             acc = []
     if acc:
-        token = "".join(acc)
+        token = "".join(acc).lower()
         if predicate(token):
-            result.append(token)
+            result.append("".join(acc).lower())
     return result
 
 
-def inverted_index(fd: TextIO) -> None:
-    sep = {" ", ",", ".", "!", "?"}
-    stop_words = {"the", "a", "at", "to", "be", ""}
-    for token in tokenize(fd.read(), sep, lambda x: x not in stop_words):
+def inverted_index(fd: TextIO):
+    stop_words = {"to", "be", "a", "and", "the", ""}
+    sep = {" ", ",", "!", ".", "\n"}
+    for token in tokenization(fd.read(), sep, lambda x: x not in stop_words):
         index[token].add(fd.name)
 
 
-# AND
+# support for AND OR NOT
 def search(query: str) -> set:
-    last_token = ""
-    def check_grammar(token: str) -> bool:
-        nonlocal last_token
-        if token in {"OR", "AND"}:
-            if not last_token:
-                raise RuntimeError
-            return False
+    resultset = set()
+    first = True
+    prev_keyword = ""
+    grammar = {"and", "or", "not"}
+    for keyword in tokenization(query, {" "}, lambda x: True):
+        if keyword in grammar:
+            prev_keyword = keyword
         else:
-            last_token = token
-        return True
+            if first:
+                resultset = index.get(keyword, set())
+                first = False
+            else:
+                if prev_keyword == "and":
+                    resultset = resultset.intersection(index.get(keyword, set()))
+                elif prev_keyword == "or":
+                    resultset = resultset.union(index.get(keyword, set()))
+                elif prev_keyword == "not":
+                    resultset = resultset.difference(index.get(keyword, set()))
 
-    keywords = tokenize(query, {" "}, check_grammar)
-    docsets = []
-    for keyword in keywords:
-        docsets.append(index.get(keyword, set()))
-    resultset = docsets[0].intersection(*docsets[1:])
     return resultset
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     for *_, files in os.walk("files"):
         for file in files:
             inverted_index(open(f"files/{file}"))
-    print(search("Frodo OR Baggins"))
+    print(index)
+    res = search("war not frodo")
+    print(res)
