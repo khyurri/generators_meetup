@@ -1,56 +1,54 @@
-# TODO:
-# SEND, CLOSE (tokenizer)
-
-
 import os
-from collections import defaultdict
-from typing import Callable, TextIO, Dict, Set
+from collections import defaultdict, Set
+from typing import TextIO, Callable, Generator
 
 index = defaultdict(set)
 
 
-def tokenization(text: str, sep: set, callback: Callable[[str], bool]) -> list:
+def tokenize(text: str, sep: set) -> Generator:
     acc = []
     for char in text:
         if char not in sep:
             acc.append(char)
         else:
             token = "".join(acc)
-            if callback(token):
-                yield token
+            yield token
             acc = []
     if acc:
-        yield "".join(acc)
+        token = "".join(acc)
+        yield token
 
 
-def inverted_index(index_: Dict[str, Set]):
-    stop_words = {"to", "be", "a", "and", "the", ""}
-    sep = {" ", ",", "!", ".", "\n"}
+def inverted_index() -> Generator:
+
+
     while True:
         fd = yield
-        for token in tokenization(fd.read(), sep, lambda token: token not in stop_words):
-            index_[token].add(fd.name)
+        for token in tokenize(fd.read(), sep):
+            if token not in stop_words:
+                index[token].add(fd.name)
 
 
-def search(query: str, index_: Dict[str, Set]) -> Set:
-    "keyword AND keyword"
-    prev_keyword = ""
-    docset = []
-    for keyword in tokenization(query, {" "}, lambda x: True):
-        if keyword == "AND" and prev_keyword == "":
-            raise RuntimeError
-        docset.append(index_.get(keyword, set()))
-    resultset = docset[0].intersection(*docset[1:])
+# AND
+def search(query: str) -> set:
+    last_token = ""
+    docsets = []
+    for keyword in tokenize(query, {" "}):
+        if keyword in {"OR", "AND"}:
+            if not last_token:
+                raise RuntimeError
+        else:
+            last_token = keyword
+            docsets.append(index.get(keyword, set()))
+    resultset = docsets[0].intersection(*docsets[1:])
     return resultset
 
 
-if __name__ == "__main__":
-    inv_index = inverted_index(index)
-    inv_index.__next__()
+if __name__ == '__main__':
+    inv_coro = inverted_index()
+    next(inv_coro)
     for *_, files in os.walk("files"):
         for file in files:
-            inv_index.send(open(f"files/{file}"))
-    inv_index.close()
-    print(index)
-    res = search("Lorem Ipsum", index)
-    print(res)
+            inv_coro.send(open(f"files/{file}"))
+    inv_coro.close()
+    print(search("Frodo OR Baggins"))
