@@ -112,6 +112,7 @@ if __name__ == "__main__":
     try:
         sock.bind(("127.0.0.1", 5555))
         sock.setblocking(False)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
         sock.listen()
 
         sel.register(sock, selectors.EVENT_READ, accept)
