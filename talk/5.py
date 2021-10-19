@@ -2,15 +2,18 @@ import os
 import selectors
 import socket
 import time
-from collections import defaultdict, Set, deque
-from typing import TextIO, Callable, Generator
+from collections import Set, defaultdict, deque
+from typing import Callable, Generator, TextIO
 
 index = defaultdict(set)
+
+SEPARATORS = {" ", ",", "!", ".", "\n"}
+STOPWORDS = {"to", "be", "a", "and", "the", ""}
 
 sel = selectors.DefaultSelector()
 
 
-def tokenize(text: str, sep: set) -> Generator:
+def tokenization(text: str, sep: set) -> Generator:
     acc = []
     for char in text:
         if char not in sep:
@@ -25,12 +28,10 @@ def tokenize(text: str, sep: set) -> Generator:
 
 
 def inverted_index() -> Generator:
-    sep = {" "}
-    stop_words = {}
     while True:
         name, chunk = yield
-        for token in tokenize(chunk, sep):
-            if token not in stop_words:
+        for token in tokenization(chunk, SEPARATORS):
+            if token not in STOPWORDS:
                 index[token].add(name)
 
 
@@ -63,18 +64,27 @@ def reader(files: deque, inv_coro: Generator) -> None:
         time.sleep(0.5)
 
 
-# AND
+# support for AND OR NOT
 def search(query: str) -> set:
-    last_token = ""
-    docsets = []
-    for keyword in tokenize(query, {" "}):
-        if keyword in {"OR", "AND"}:
-            if not last_token:
-                raise RuntimeError
+    resultset = set()
+    first = True
+    prev_keyword = ""
+    grammar = {"and", "or", "not"}
+    for keyword in tokenization(query, {" "}, lambda x: True):
+        if keyword in grammar:
+            prev_keyword = keyword
         else:
-            last_token = keyword
-            docsets.append(index.get(keyword, set()))
-    resultset = docsets[0].intersection(*docsets[1:])
+            if first:
+                resultset = index.get(keyword, set())
+                first = False
+            else:
+                if prev_keyword == "and":
+                    resultset = resultset.intersection(index.get(keyword, set()))
+                elif prev_keyword == "or":
+                    resultset = resultset.union(index.get(keyword, set()))
+                elif prev_keyword == "not":
+                    resultset = resultset.difference(index.get(keyword, set()))
+
     return resultset
 
 
@@ -96,7 +106,7 @@ def accept(sock: socket.socket) -> None:
             conn.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     sock = socket.socket()
     try:

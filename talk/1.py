@@ -1,8 +1,11 @@
 import os
 from collections import defaultdict
-from typing import TextIO, Callable
+from typing import Callable, Generator, TextIO
 
 index = defaultdict(set)
+
+SEPARATORS = {" ", ",", "!", ".", "\n"}
+STOPWORDS = {"to", "be", "a", "and", "the", ""}
 
 
 def tokenization(text: str, sep: set, predicate: Callable[[str], bool]) -> list:
@@ -24,9 +27,7 @@ def tokenization(text: str, sep: set, predicate: Callable[[str], bool]) -> list:
 
 
 def inverted_index(fd: TextIO):
-    stop_words = {"to", "be", "a", "and", "the", ""}
-    sep = {" ", ",", "!", ".", "\n"}
-    for token in tokenization(fd.read(), sep, lambda x: x not in stop_words):
+    for token in tokenization(fd.read(), SEPARATORS, lambda x: x not in STOPWORDS):
         index[token].add(fd.name)
 
 

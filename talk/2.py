@@ -1,11 +1,14 @@
 import os
-from collections import defaultdict, Set
-from typing import TextIO, Callable, Generator
+from collections import Set, defaultdict
+from typing import Callable, Generator, TextIO
 
 index = defaultdict(set)
 
+SEPARATORS = {" ", ",", "!", ".", "\n"}
+STOPWORDS = {"to", "be", "a", "and", "the", ""}
 
-def tokenize(text: str, sep: set) -> Generator:
+
+def tokenization(text: str, sep: set) -> Generator:
     acc = []
     for char in text:
         if char not in sep:
@@ -20,29 +23,36 @@ def tokenize(text: str, sep: set) -> Generator:
 
 
 def inverted_index(fd: TextIO) -> None:
-    sep = {" ", ",", ".", "!", "?"}
-    stop_words = {"the", "a", "at", "to", "be", ""}
-    for token in tokenize(fd.read(), sep):
-        if token not in stop_words:
+    for token in tokenization(fd.read(), SEPARATORS):
+        if token not in STOPWORDS:
             index[token].add(fd.name)
 
 
-# AND
+# support for AND OR NOT
 def search(query: str) -> set:
-    last_token = ""
-    docsets = []
-    for keyword in tokenize(query, {" "}):
-        if keyword in {"OR", "AND"}:
-            if not last_token:
-                raise RuntimeError
+    resultset = set()
+    first = True
+    prev_keyword = ""
+    grammar = {"and", "or", "not"}
+    for keyword in tokenization(query, {" "}, lambda x: True):
+        if keyword in grammar:
+            prev_keyword = keyword
         else:
-            last_token = keyword
-            docsets.append(index.get(keyword, set()))
-    resultset = docsets[0].intersection(*docsets[1:])
+            if first:
+                resultset = index.get(keyword, set())
+                first = False
+            else:
+                if prev_keyword == "and":
+                    resultset = resultset.intersection(index.get(keyword, set()))
+                elif prev_keyword == "or":
+                    resultset = resultset.union(index.get(keyword, set()))
+                elif prev_keyword == "not":
+                    resultset = resultset.difference(index.get(keyword, set()))
+
     return resultset
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     for *_, files in os.walk("files"):
         for file in files:
             inverted_index(open(f"files/{file}"))
